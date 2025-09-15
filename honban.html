@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dインタラクティブ Webページ</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+        }
+
+        #title {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            font-size: 2.5em;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px #333;
+            z-index: 10;
+        }
+
+        #message {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            font-size: 1.2em;
+            text-shadow: 1px 1px 3px #000;
+            z-index: 10;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            display: none;
+            z-index: 10;
+            user-select: none;
+        }
+
+        .control-button {
+            background-color: rgba(50, 50, 50, 0.7);
+            border: 2px solid #aaa;
+            color: #fff;
+            padding: 10px 20px;
+            font-size: 1em;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .control-button:hover {
+            background-color: rgba(80, 80, 80, 0.9);
+            transform: scale(1.05);
+        }
+
+        #video-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        .video-player {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            display: none;
+        }
+
+        #close-video {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2em;
+            color: #fff;
+            background-color: rgba(50, 50, 50, 0.7);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 21;
+        }
+    </style>
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+</head>
+<body>
+    <div id="title">大学生活で1番'〇〇'なライブ</div>
+    <div id="message">3Dモデルをクリックして中に入ります</div>
+    <div id="canvas-container"></div>
+    <div id="video-container">
+        <div id="close-video">×</div>
+        <video id="video_chikai" class="video-player" src="./chikai.mov" controls muted playsinline></video>
+        <video id="video_naki" class="video-player" src="./naki.mov" controls muted playsinline></video>
+        <video id="video_gouon" class="video-player" src="./gouon.mov" controls muted playsinline></video>
+        <video id="video_musical" class="video-player" src="musical.MOV" controls muted playsinline></video>
+        <video id="video_henzin" class="video-player" src="henzin.MOV" controls muted playsinline></video>
+        <video id="video_odotta" class="video-player" src="odotta.MOV" controls muted playsinline></video>
+    </div>
+
+    <a-scene embedded vr-mode-ui="enabled: false">
+      <a-sky src="sora.jpg"></a-sky>
+    </a-scene>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let mainModel, facilities = [];
+        let raycaster, mouse;
+        let videoContainer, messageDiv;
+        let state = 'initial';
+        let currentVideoElement = null;
+
+        let modelCenter = new THREE.Vector3();
+        let modelSize = new THREE.Vector3();
+
+        const facilityVideoMap = {
+            'chikai': 'video_chikai',
+            'naki': 'video_naki',
+            'gouon': 'video_gouon',
+            'musical': 'video_musical',
+            'henzin': 'video_henzin',
+            'odotta': 'video_odotta',
+        };
+
+        async function init() {
+            try {
+                scene = new THREE.Scene();
+                const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+                scene.add(ambientLight);
+
+                const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
+                scene.add(hemisphereLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.8);
+                directionalLight.position.set(50, 50, 50);
+                scene.add(directionalLight);
+
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.outputEncoding = THREE.sRGBEncoding;
+                document.getElementById('canvas-container').appendChild(renderer.domElement);
+                renderer.domElement.style.position = 'absolute';
+                renderer.domElement.style.top = '0';
+                renderer.domElement.style.left = '0';
+                renderer.domElement.style.zIndex = '1';
+
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enabled = false;
+
+                const gltfLoader = new THREE.GLTFLoader();
+
+                try {
+                    // const gltf = await gltfLoader.loadAsync('./3d_model.glb');
+                    const fileId = "1k7n91-ILh32LMrv6uP38b_Xp9zAKB9bW"; // 自分のGLB/GLTFファイルのID
+                    const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+                    const gltf = await gltfLoader.loadAsync(url);
+                    // const gltf = await gltfLoader.loadAsync('https://drive.google.com/file/d/1EN5R3kv9U6f4yhzPAMHzFJMd8fxNUvYB/view?usp=sharing')
+                    mainModel = gltf.scene;
+                    
+                    // モデルの配置位置は固定
+                    mainModel.position.set(5, -5, -10);
+                    mainModel.scale.set(10, 10, 10);
+                    
+                    scene.add(mainModel);
+                    mainModel.name = 'main_model_entry';
+
+                    // モデルのバウンディングボックスから中心とサイズを計算
+                    const box = new THREE.Box3().setFromObject(mainModel);
+                    box.getCenter(modelCenter);
+                    box.getSize(modelSize);
+
+                    // 修正点: 初期カメラ位置をモデルの中心を基準に設定
+                    const cameraDistance = Math.max(modelSize.x, modelSize.y, modelSize.z) * 1.5;
+                    camera.position.set(
+                        modelCenter.x + cameraDistance * 0.7,
+                        modelCenter.y + cameraDistance * 0.6,
+                        modelCenter.z + cameraDistance * 0.7
+                    );
+
+                    camera.lookAt(modelCenter);
+
+                    mainModel.traverse((child) => {
+                        if (child.isMesh && facilityVideoMap[child.name]) {
+                            facilities.push(child);
+                            console.log(`施設オブジェクトを検出: ${child.name}`);
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("3Dマップモデルの読み込みに失敗しました。GLB形式のモデルを使用し、正しいパスを指定してください。", e);
+                    const geometry = new THREE.SphereGeometry(3, 32, 32);
+                    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                    mainModel = new THREE.Mesh(geometry, material);
+                    scene.add(mainModel);
+                    mainModel.name = 'main_model_entry';
+                }
+
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
+                videoContainer = document.getElementById('video-container');
+                messageDiv = document.getElementById('message');
+
+                document.getElementById('close-video').addEventListener('click', onVideoEnded);
+
+                window.addEventListener('resize', onWindowResize);
+                window.addEventListener('click', onClick, false);
+
+                animate();
+
+            } catch (e) {
+                console.error("アプリケーションの初期化中にエラーが発生しました。", e);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onClick(event) {
+            if (state === 'initial' || state === 'map_exploration') {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(scene.children, true);
+
+                if (intersects.length > 0) {
+                    const clickedObject = intersects[0].object;
+                    
+                    if (state === 'initial') {
+                        let isMainModel = false;
+                        let currentObject = clickedObject;
+                        while(currentObject.parent) {
+                            if (currentObject.name === 'main_model_entry') {
+                                isMainModel = true;
+                                break;
+                            }
+                            currentObject = currentObject.parent;
+                        }
+
+                        if (isMainModel) {
+                            // 修正点: 目線が下から見上げるようにy座標をさらに下げる
+                            const cameraOffsetY = modelSize.y * -0.2;
+                            const targetPosition = new THREE.Vector3(modelCenter.x -5, modelCenter.y + cameraOffsetY, modelCenter.z);
+                            const lookAtTarget = new THREE.Vector3(modelCenter.x, modelCenter.y, modelCenter.z);
+
+                            transitionCamera(targetPosition, lookAtTarget, () => {
+                                state = 'map_exploration';
+                                controls.enabled = true;
+                                controls.target.copy(lookAtTarget);
+                                controls.update();
+                                messageDiv.innerHTML = "マウス操作で視点を自由に動かせます。<br>施設をクリックすると中に入ります。";
+                            });
+                        }
+                    } else if (state === 'map_exploration' && facilityVideoMap[clickedObject.name]) {
+                        controls.enabled = false;
+                        
+                        const facilityWorldPosition = new THREE.Vector3();
+                        clickedObject.getWorldPosition(facilityWorldPosition);
+
+                        const targetPosition = new THREE.Vector3(
+                            facilityWorldPosition.x,
+                            facilityWorldPosition.y,
+                            facilityWorldPosition.z
+                        );
+
+                        const lookAtTarget = new THREE.Vector3(
+                            facilityWorldPosition.x ,
+                            facilityWorldPosition.y,
+                            facilityWorldPosition.z
+                        );
+                        
+                        transitionCamera(targetPosition, lookAtTarget, () => {
+                            state = 'in_facility';
+                            enterFacility(facilityVideoMap[clickedObject.name]);
+                        });
+                    }
+                }
+            }
+        }
+
+        function transitionCamera(targetPosition, lookAtTarget, onComplete) {
+            const startPosition = camera.position.clone();
+            const startLookAt = new THREE.Vector3().copy(controls.target);
+            
+            const duration = 1500;
+            const startTime = performance.now();
+
+            function animateCamera(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+                
+                camera.position.lerpVectors(startPosition, targetPosition, easeProgress);
+                const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, lookAtTarget, easeProgress);
+                camera.lookAt(currentLookAt);
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateCamera);
+                } else {
+                    camera.lookAt(lookAtTarget);
+                    if (onComplete) onComplete();
+                }
+            }
+            requestAnimationFrame(animateCamera);
+        }
+
+        function enterFacility(videoId) {
+            messageDiv.style.display = 'none';
+            videoContainer.style.display = 'flex';
+            document.getElementById('close-video').style.display = 'flex';
+            currentVideoElement = document.getElementById(videoId);
+            currentVideoElement.style.display = 'block';
+
+            currentVideoElement.addEventListener('ended', onVideoEnded, { once: true });
+
+            setTimeout(() => {
+                videoContainer.style.opacity = 1;
+                currentVideoElement.play();
+            }, 100);
+        }
+
+        function onVideoEnded() {
+            videoContainer.style.opacity = 0;
+            if (currentVideoElement) {
+                currentVideoElement.pause();
+                currentVideoElement.currentTime = 0;
+                currentVideoElement.style.display = 'none';
+            }
+            document.getElementById('close-video').style.display = 'none';
+
+            setTimeout(() => {
+                videoContainer.style.display = 'none';
+                
+                const cameraOffsetY = modelSize.y * -0.2;
+                const targetPosition = new THREE.Vector3(modelCenter.x - 5, modelCenter.y + cameraOffsetY, modelCenter.z);
+                const lookAtTarget = new THREE.Vector3(modelCenter.x, modelCenter.y, modelCenter.z);
+
+                transitionCamera(targetPosition, lookAtTarget, () => {
+                    state = 'map_exploration';
+                    controls.enabled = true;
+                    controls.target.copy(lookAtTarget);
+                    controls.update();
+                    messageDiv.style.display = 'block';
+                });
+            }, 1000);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (controls.enabled) {
+                controls.update();
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
