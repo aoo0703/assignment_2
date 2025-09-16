@@ -333,6 +333,11 @@
                 moonLight = new THREE.AmbientLight(0xffffff, 0.5); 
                 scene.add(moonLight);
 
+                // 新規追加ライト
+                const frontLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                frontLight.position.set(0, 10, 50); // 初期位置から奥を照らすように設定
+                scene.add(frontLight);
+
                 camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 camera.position.set(0, 20, 30);
                 camera.lookAt(0, 0, 0);
