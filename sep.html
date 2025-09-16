@@ -158,6 +158,19 @@
             transition: background-color 0.3s;
         }
         #close-video-button:hover { background-color: rgba(255,255,255,0.2); }
+        footer {
+            position: fixed; /* 画面に対して位置を固定する */
+            bottom: 15px;   /* 画面の下から20pxの位置に */
+            left: 15px;     /* 画面の左から20pxの位置に */
+            background: rgba(0, 0, 0, 0.7); /* 背景色を半透明の黒にする */
+            color: #fff; /* 文字色を白に */
+            padding: 5px 5px; /* 内側の余白を調整 */
+            border-radius: 3px; /* 角を少し丸くする */
+            font-size: 0.5em; /* 文字サイズを少し小さくする */
+            z-index: 20; /* 他の要素より前面に表示する */
+        }
+    </style>
+        
     </style>
 </head>
 <body>
@@ -550,5 +563,8 @@
             renderer.render(scene, camera);
         }
     </script>
+    <footer>
+        <p>&copy; 2025 Fuka Nagatani. All Rights Reserved.</p>
+    </footer>
 </body>
 </html>
