@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>1番の思い出</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>大学生活で1番の思い出（昼夜＋雨 + 3D）</title>
     <style>
         body {
             margin: 0;
@@ -12,33 +12,105 @@
             color: #fff;
             font-family: 'Inter', sans-serif;
             text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             height: 100vh;
             position: relative;
         }
 
+        /* タイトル・メッセージ */
         #title {
             position: absolute;
             top: 20px;
             width: 100%;
-            font-size: 2.5em;
+            font-size: 2.2em;
             font-weight: bold;
             text-shadow: 2px 2px 5px #333;
             z-index: 10;
         }
-
         #message {
             position: absolute;
             bottom: 100px;
             width: 100%;
-            font-size: 1.2em;
+            font-size: 1.1em;
             text-shadow: 1px 1px 3px #000;
             z-index: 10;
         }
 
+        /* 背景（昼夜 + 雨） */
+        #bg-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            transition: background-color 1s linear;
+            z-index: 0;
+        }
+        #background-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: 50px 50px;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            animation: moveGrid 60s linear infinite;
+        }
+        @keyframes moveGrid {
+            from { background-position: 0 0; }
+            to { background-position: 1000px 1000px; }
+        }
+
+        /* 太陽・月（固定表示、ビューポート基準） */
+        .celestial {
+            position: fixed;
+            width: 150px;
+            height: 150px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .sun, .moon {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: absolute;
+        }
+        .sun {
+            background: #FFD37F;
+            box-shadow: 0 0 80px #FFD37F;
+        }
+        .moon {
+            background: #e0e0f0;
+            box-shadow: 0 0 40px #e0e0f0;
+        }
+
+        #rain-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            z-index: 0;
+        }
+        .raindrop {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background-color: rgba(100,180,255,0.8);
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            from { transform: translateY(-50px); }
+            to { transform: translateY(110vh); }
+        }
+
+        /* Three.js キャンバス（前面） */
         #canvas-container {
             width: 100%;
             height: 100%;
@@ -48,13 +120,14 @@
             z-index: 1;
         }
 
+        /* 動画再生UI */
         #video-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0,0,0,0.9);
             display: none;
             justify-content: center;
             align-items: center;
@@ -62,15 +135,13 @@
             opacity: 0;
             transition: opacity 1s;
         }
-
         .video-player {
             max-width: 90%;
             max-height: 90%;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
             display: none;
         }
-
         #close-video-button {
             position: absolute;
             top: 20px;
@@ -83,19 +154,26 @@
             z-index: 21;
             padding: 5px 10px;
             border-radius: 5px;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0,0,0,0.5);
             transition: background-color 0.3s;
         }
-
-        #close-video-button:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
+        #close-video-button:hover { background-color: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
+    <div id="bg-container">
+        <div id="background-grid"></div>
+        <div class="celestial" id="celestial-wrap">
+            <div class="sun" id="sun"></div>
+            <div class="moon" id="moon"></div>
+        </div>
+        <div id="rain-container"></div>
+    </div>
+
     <div id="title">大学生活で1番'〇〇'なライブ</div>
-    <div id="message">建物をクリックして動画を再生</div>
+    <div id="message">中央の緑の球体をクリックして探索開始</div>
     <div id="canvas-container"></div>
+
     <div id="video-container">
         <button id="close-video-button">×</button>
         <video id="video_chikai" class="video-player" src="./chikai.mov" controls muted playsinline></video>
@@ -106,12 +184,119 @@
         <video id="video_odotta" class="video-player" src="./odotta.MOV" controls muted playsinline></video>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.js"></script>
-    
-    <script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/examples/jsm/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+        import TWEEN from 'https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.esm.js';
+
+        // 昼夜サイクル + 雨
+        (function(){
+            const bgContainer = document.getElementById("bg-container");
+            const sunEl = document.getElementById("sun");
+            const moonEl = document.getElementById("moon");
+            const rainContainer = document.getElementById("rain-container");
+
+            window.brightness = 0; // グローバル変数として定義
+            window.raining = false; // グローバル変数として定義
+
+            let angle = 0;
+            let radius = Math.min(window.innerWidth, window.innerHeight) * 0.6;
+            let centerX = window.innerWidth / 2;
+            let centerY = window.innerHeight * 0.8;
+
+            let rainInterval = null;
+            let lastRainTime = Date.now();
+
+            function updateDims(){
+                radius = Math.min(window.innerWidth, window.innerHeight) * 0.6;
+                centerX = window.innerWidth / 2;
+                centerY = window.innerHeight * 0.8;
+            }
+            window.addEventListener('resize', updateDims);
+
+            function interpolateColor(color1, color2, factor) {
+                const c1 = color1.match(/\d+/g).map(Number);
+                const c2 = color2.match(/\d+/g).map(Number);
+                return `rgb(${c1.map((v, i) => Math.round(v + (c2[i] - v) * factor)).join(",")})`;
+            }
+
+            function updateScene() {
+                angle = (angle + 0.15) % 360;
+                const rad = angle * Math.PI / 180;
+
+                const sunX = centerX + radius * Math.cos(rad);
+                const sunY = centerY - radius * Math.sin(rad);
+                const moonRad = rad + Math.PI;
+                const moonX = centerX + radius * Math.cos(moonRad);
+                const moonY = centerY - radius * Math.sin(moonRad);
+
+                sunEl.style.left = `${sunX - 75}px`;
+                sunEl.style.top = `${sunY - 75}px`;
+                moonEl.style.left = `${moonX - 75}px`;
+                moonEl.style.top = `${moonY - 75}px`;
+
+                window.brightness = Math.max(0, Math.sin(rad));
+                if (window.raining) window.brightness *= 0.8;
+
+                const bgColor = interpolateColor("rgb(20, 30, 60)", "rgb(180, 220, 255)", window.brightness);
+                bgContainer.style.backgroundColor = bgColor;
+
+                sunEl.style.opacity = window.brightness;
+                sunEl.style.boxShadow = `0 0 ${50 + 100 * window.brightness}px rgba(255,210,120,${window.brightness})`;
+                const moonBrightness = 1 - window.brightness;
+                moonEl.style.opacity = moonBrightness * 0.8;
+                moonEl.style.boxShadow = `0 0 ${30 + 50 * moonBrightness}px rgba(200,200,255,${moonBrightness})`;
+
+                requestAnimationFrame(updateScene);
+            }
+
+            function startRain() {
+                if (window.raining) return;
+                window.raining = true;
+                lastRainTime = Date.now();
+                rainContainer.style.opacity = 1;
+
+                rainInterval = setInterval(() => {
+                    const drop = document.createElement("div");
+                    drop.className = "raindrop";
+                    drop.style.left = `${Math.random() * 100}%`;
+                    drop.style.animationDuration = `${Math.random() * 0.6 + 0.6}s`;
+                    rainContainer.appendChild(drop);
+                    drop.addEventListener("animationend", () => drop.remove());
+                }, 50);
+
+                setTimeout(stopRain, Math.random() * 10000 + 10000);
+            }
+
+            function stopRain() {
+                window.raining = false;
+                rainContainer.style.opacity = 0;
+                if (rainInterval) { clearInterval(rainInterval); rainInterval = null; }
+            }
+
+            function maybeRain() {
+                const now = Date.now();
+                const elapsed = (now - lastRainTime) / 1000;
+                if (!window.raining && elapsed > 30 && Math.random() < 0.2) startRain();
+                if (!window.raining && elapsed > 60) startRain();
+            }
+
+            setInterval(maybeRain, 5000);
+            updateScene();
+        })();
+
+        // Three.js + Quick Action
+        window.addEventListener('load', init);
+
         let scene, camera, renderer, controls;
         let facilities = [];
         let raycaster, mouse;
@@ -119,57 +304,57 @@
         let currentVideoElement = null;
         let isAnimating = false;
         let state = 'initial'; // 'initial', 'map_exploration', 'in_facility'
+        let sunLight, moonLight; 
 
         const objectData = [
-            { name: 'naki', glbPath: './naki2.glb', videoId: 'video_naki', position: new THREE.Vector3(-25, 0, 25) },
+            { name: 'naki', glbPath: './naki.glb', videoId: 'video_naki', position: new THREE.Vector3(-25, 0, 25) },
             { name: 'chikai', glbPath: './chikai.glb', videoId: 'video_chikai', position: new THREE.Vector3(0, 0, -25) },
-            { name: 'henzin', glbPath: './henzin2.glb', videoId: 'video_henzin', position: new THREE.Vector3(-25, 0, 25) },
+            { name: 'henzin', glbPath: './henzin.glb', videoId: 'video_henzin', position: new THREE.Vector3(25, 0, 25) },
             { name: 'odotta', glbPath: './odotta.glb', videoId: 'video_odotta', position: new THREE.Vector3(25, 0, -25) },
             { name: 'gouon', glbPath: './gouon.glb', videoId: 'video_gouon', position: new THREE.Vector3(0, 0, 25) },
-            { name: 'musical', glbPath: './musical.glb', videoId: 'video_musical', position: new THREE.Vector3(-25, 0, 25) }
+            { name: 'musical', glbPath: './musical.glb', videoId: 'video_musical', position: new THREE.Vector3(-25, 0, -25) }
         ];
 
         async function init() {
             try {
                 scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x000000);
+                // scene.background を削除 - CSSの背景を透過して表示するため
 
                 const gridHelper = new THREE.GridHelper(100, 100, 0x888888, 0x888888);
                 scene.add(gridHelper);
 
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-                scene.add(ambientLight);
+                // DirectionalLight (太陽光の役割)
+                sunLight = new THREE.DirectionalLight(0xffffff, 1.2); // 強度を少し上げる
+                sunLight.position.set(50, 50, 50);
+                scene.add(sunLight);
 
-                const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
-                scene.add(hemisphereLight);
-
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-                directionalLight.position.set(50, 50, 50);
-                scene.add(directionalLight);
+                // AmbientLight (環境光・月の光の役割)
+                // 初期強度を上げ、夜間でもオブジェクトが見えやすくする
+                moonLight = new THREE.AmbientLight(0xffffff, 0.5); 
+                scene.add(moonLight);
 
                 camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 camera.position.set(0, 20, 30);
                 camera.lookAt(0, 0, 0);
 
-                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.outputEncoding = THREE.sRGBEncoding;
+                renderer.outputColorSpace = THREE.SRGBColorSpace;
                 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls = new OrbitControls(camera, renderer.domElement);
                 controls.enabled = false;
                 controls.target.set(0, 0, 0);
                 controls.update();
 
-                // 原点(0,0,0)に球体オブジェクトを配置
                 const sphereGeometry = new THREE.SphereGeometry(2, 32, 32);
                 const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
                 const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
                 sphere.name = 'originSphere';
                 sphere.userData.isOrigin = true;
                 scene.add(sphere);
-                
-                const gltfLoader = new THREE.GLTFLoader();
+
+                const gltfLoader = new GLTFLoader();
 
                 for (const data of objectData) {
                     try {
@@ -178,25 +363,24 @@
                         model.name = data.name;
                         model.userData.videoId = data.videoId;
                         model.position.copy(data.position);
-                        model.scale.set(10, 10, 10);
-                        
-                        scene.add(model);
+                        model.scale.set(20, 20, 20);
 
                         const box = new THREE.Box3().setFromObject(model);
                         const center = box.getCenter(new THREE.Vector3());
                         const size = box.getSize(new THREE.Vector3());
                         model.position.y -= center.y - (size.y / 2);
 
+                        scene.add(model);
+
                         model.traverse((child) => {
                             if (child.isMesh) {
                                 facilities.push(child);
                                 child.userData.rootName = model.name;
                                 child.userData.videoId = model.userData.videoId;
-                                child.userData.rootPosition = model.position;
+                                child.userData.rootPosition = model.position.clone();
                             }
                         });
                         console.log(`モデルをロード: ${data.name}`);
-
                     } catch (e) {
                         console.error(`GLBファイルの読み込みに失敗しました: ${data.name}`, e);
                         const geometry = new THREE.BoxGeometry(5, 5, 5);
@@ -205,13 +389,12 @@
                         cube.name = data.name;
                         cube.userData.videoId = data.videoId;
                         cube.position.copy(data.position);
-                        
+
                         scene.add(cube);
                         facilities.push(cube);
                     }
                 }
-                
-                // 原点と施設オブジェクトをraycastの対象に追加
+
                 facilities.push(sphere);
 
                 raycaster = new THREE.Raycaster();
@@ -224,11 +407,7 @@
                 window.addEventListener('click', onClick, false);
                 closeVideoButton.addEventListener('click', closeVideo);
 
-                // 初期メッセージ
-                messageDiv.innerHTML = "中央の緑の球体をクリックして探索開始";
-
                 animate();
-
             } catch (e) {
                 console.error("アプリケーションの初期化中にエラーが発生しました。", e);
             }
@@ -241,9 +420,7 @@
         }
 
         function onClick(event) {
-            if (isAnimating) {
-                return;
-            }
+            if (isAnimating) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -253,70 +430,51 @@
 
             if (intersects.length > 0) {
                 const clickedObject = intersects[0].object;
-                
+
                 if (state === 'initial' && clickedObject.userData.isOrigin) {
-                    // 球体クリック: 球体の中心を取得
                     const box = new THREE.Box3().setFromObject(clickedObject);
                     const center = box.getCenter(new THREE.Vector3());
 
-                    // 球体を「低め & 近め」に見るように移動
                     const targetPosition = new THREE.Vector3(center.x, center.y + 2, center.z + 6);
                     const targetLookAt = center;
 
-                    transitionCamera(
-                        targetPosition,
-                        targetLookAt,
-                        () => {
-                            state = 'map_exploration';
-                            controls.enabled = true;
-                            messageDiv.innerHTML = "マウス操作で視点を自由に動かせます。<br>施設をクリックして動画を再生";
-                            
-                            // 球体オブジェクトをシーンから削除
-                            scene.remove(clickedObject);
-                            
-                            // 施設リストからも削除して、二度とクリックできないようにする
-                            const index = facilities.indexOf(clickedObject);
-                            if (index > -1) {
-                                facilities.splice(index, 1);
-                            }
-                        }
-                    );
+                    transitionCamera(targetPosition, targetLookAt, () => {
+                        state = 'map_exploration';
+                        controls.enabled = true;
+                        messageDiv.innerHTML = "マウス操作で視点を自由に動かせます。<br>施設をクリックして動画を再生";
+
+                        scene.remove(clickedObject);
+                        const index = facilities.indexOf(clickedObject);
+                        if (index > -1) facilities.splice(index, 1);
+                    });
                 } else if (state === 'map_exploration' && clickedObject.userData.videoId) {
                     controls.enabled = false;
 
-                    // クリックされたオブジェクトの中心を取得
                     const box = new THREE.Box3().setFromObject(clickedObject);
                     const center = box.getCenter(new THREE.Vector3());
 
-                    // オブジェクト中心に対して「低め & 近め」にカメラを配置
                     const targetPosition = new THREE.Vector3(center.x, center.y + 1, center.z + 1.2);
-
                     const targetLookAt = center;
 
-                    transitionCamera(
-                        targetPosition,
-                        targetLookAt,
-                        () => {
-                            state = 'in_facility';
-                            enterFacility(clickedObject.userData.videoId);
-                        }
-                    );
+                    transitionCamera(targetPosition, targetLookAt, () => {
+                        state = 'in_facility';
+                        enterFacility(clickedObject.userData.videoId);
+                    });
                 }
-
             }
         }
 
         function transitionCamera(targetPosition, targetLookAt, onComplete = () => {}) {
             isAnimating = true;
             controls.enabled = false;
-            
+
             new TWEEN.Tween(camera.position)
-                .to(targetPosition, 1500)
+                .to({ x: targetPosition.x, y: targetPosition.y, z: targetPosition.z }, 1500)
                 .easing(TWEEN.Easing.Quadratic.InOut)
                 .start();
 
             new TWEEN.Tween(controls.target)
-                .to(targetLookAt, 1500)
+                .to({ x: targetLookAt.x, y: targetLookAt.y, z: targetLookAt.z }, 1500)
                 .easing(TWEEN.Easing.Quadratic.InOut)
                 .onUpdate(() => controls.update())
                 .onComplete(() => {
@@ -352,18 +510,12 @@
 
             setTimeout(() => {
                 videoContainer.style.display = 'none';
-                
-                // 動画終了後、マップの中心に戻るアニメーション
-                transitionCamera(
-                    new THREE.Vector3(0, 5, 15), 
-                    new THREE.Vector3(0, 0, 0), 
-                    () => {
-                        state = 'map_exploration';
-                        controls.enabled = true;
-                        messageDiv.style.display = 'block';
-                        messageDiv.innerHTML = "マウス操作で視点を自由に動かせます。<br>施設をクリックして動画を再生";
-                    }
-                );
+                transitionCamera(new THREE.Vector3(0, 5, 15), new THREE.Vector3(0, 0, 0), () => {
+                    state = 'map_exploration';
+                    controls.enabled = true;
+                    messageDiv.style.display = 'block';
+                    messageDiv.innerHTML = "マウス操作で視点を自由に動かせます。<br>施設をクリックして動画を再生";
+                });
             }, 1000);
         }
 
@@ -371,10 +523,27 @@
             requestAnimationFrame(animate);
             TWEEN.update();
             controls.update();
+
+            const brightness = window.brightness || 0;
+            const isRaining = window.raining || false;
+
+            // 昼間は太陽光がメイン、夜間は環境光（月光）がメインになるように調整
+            // 環境光の最低強度を上げて、夜間でもオブジェクトが見えるようにする
+            const minAmbientIntensity = 0.4; // 夜間の最低環境光強度
+            const maxAmbientIntensity = 1.0; // 昼間の最大環境光強度
+            
+            // DirectionalLight (太陽光) の強度
+            // 昼間は強く、夜間は弱く
+            sunLight.intensity = (0.5 + brightness * 1.5) * (isRaining ? 0.6 : 1.0); // 雨の日は少し暗く
+            sunLight.color.setRGB(1.0, 0.95 + brightness * 0.05, 0.8 + brightness * 0.2); // 昼は白っぽく、夜は少し暖色に
+
+            // AmbientLight (環境光/月光) の強度
+            // 昼間も少し存在し、夜間は明るさを維持
+            moonLight.intensity = minAmbientIntensity + (maxAmbientIntensity - minAmbientIntensity) * (1 - brightness) * (isRaining ? 0.7 : 1.0);
+            moonLight.color.setRGB(0.8 + brightness * 0.2, 0.9 + brightness * 0.1, 1.0); // 夜は青白く、昼は少し暖色に
+
             renderer.render(scene, camera);
         }
-
-        window.onload = init;
     </script>
 </body>
 </html>
